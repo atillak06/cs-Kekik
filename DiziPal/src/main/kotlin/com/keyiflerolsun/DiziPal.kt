@@ -65,6 +65,8 @@ class DiziPal : MainAPI() {
         "${mainUrl}/tur/komedi"                                    to "Komedi Filmleri",
         "${mainUrl}/diziler?kelime=&durum=&tur=4&type=&siralama="  to "Belgesel Dizileri",
         "${mainUrl}/tur/belgesel"                                  to "Belgesel Filmleri",
+        "${mainUrl}/diziler?kelime=&durum=&tur=25&type=&siralama=" to "Erotik Diziler",
+        "${mainUrl}/tur/erotik"                                    to "Erotik Filmler",
         // "${mainUrl}/diziler?kelime=&durum=&tur=1&type=&siralama="  to "Aile",            // ! Fazla kategori olduğu için geç yükleniyor..
         // "${mainUrl}/diziler?kelime=&durum=&tur=2&type=&siralama="  to "Aksiyon",
         // "${mainUrl}/diziler?kelime=&durum=&tur=3&type=&siralama="  to "Animasyon",
@@ -166,7 +168,6 @@ class DiziPal : MainAPI() {
         val year        = document.selectXpath("//div[text()='Yapım Yılı']//following-sibling::div").text().trim().toIntOrNull()
         val description = document.selectFirst("div.summary p")?.text()?.trim()
         val tags        = document.selectXpath("//div[text()='Türler']//following-sibling::div").text().trim().split(" ").map { it.trim() }
-        val rating      = document.selectXpath("//div[text()='IMDB Puanı']//following-sibling::div").text().trim().toRatingInt()
         val duration    = Regex("(\\d+)").find(document.selectXpath("//div[text()='Ortalama Süre']//following-sibling::div").text())?.value?.toIntOrNull()
 
         if (url.contains("/dizi/")) {
@@ -190,7 +191,6 @@ class DiziPal : MainAPI() {
                 this.year      = year
                 this.plot      = description
                 this.tags      = tags
-                this.rating    = rating
                 this.duration  = duration
             }
         } else { 
@@ -201,7 +201,6 @@ class DiziPal : MainAPI() {
                 this.year      = year
                 this.plot      = description
                 this.tags      = tags
-                this.rating    = rating
                 this.duration  = duration
             }
         }
