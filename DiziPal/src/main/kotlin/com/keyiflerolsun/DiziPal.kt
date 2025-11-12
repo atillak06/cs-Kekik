@@ -1,4 +1,5 @@
 // ! Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+// Otomatik domain tespit özelliği eklendi (ör. dizipal1218.com olursa yakalar)
 
 package com.keyiflerolsun
 
@@ -13,8 +14,11 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import org.jsoup.Jsoup
 import java.net.URLEncoder
+import kotlin.math.max
+import kotlin.math.min
 
 class DiziPal : MainAPI() {
+    // başlangıç olarak eski domain koyulur — kod runtime'da değiştirebilir
     override var mainUrl              = "https://dizipal1217.com"
     override var name                 = "DiziPal"
     override val hasMainPage          = true
@@ -22,13 +26,14 @@ class DiziPal : MainAPI() {
     override val hasQuickSearch       = true
     override val supportedTypes       = setOf(TvType.TvSeries, TvType.Movie)
 
-    // ! CloudFlare bypass
-// ! CloudFlare bypass
-    override var sequentialMainPage = true        // * https://recloudstream.github.io/dokka/-cloudstream/com.lagradost.cloudstream3/-main-a-p-i/index.html#-2049735995%2FProperties%2F101969414
-    override var sequentialMainPageDelay       = 50L  // ? 0.05 saniye
-    override var sequentialMainPageScrollDelay = 50L  // ? 0.05 saniye
+    // domain resolved flag
+    private var mainUrlResolved = false
 
-    // ! CloudFlare v2
+    // ! CloudFlare bypass
+    override var sequentialMainPage = true
+    override var sequentialMainPageDelay       = 50L
+    override var sequentialMainPageScrollDelay = 50L
+
     private val cloudflareKiller by lazy { CloudflareKiller() }
     private val interceptor      by lazy { CloudflareInterceptor(cloudflareKiller) }
 
@@ -46,6 +51,7 @@ class DiziPal : MainAPI() {
         }
     }
 
+    // mainPage sabitleri (isimlendirme vs)
     override val mainPage = mainPageOf(
         "${mainUrl}/diziler/son-bolumler"                          to "Son Bölümler",
         "${mainUrl}/diziler"                                       to "Yeni Diziler",
@@ -65,36 +71,116 @@ class DiziPal : MainAPI() {
         "${mainUrl}/tur/komedi"                                    to "Komedi Filmleri",
         "${mainUrl}/diziler?kelime=&durum=&tur=4&type=&siralama="  to "Belgesel Dizileri",
         "${mainUrl}/tur/belgesel"                                  to "Belgesel Filmleri",
-        "${mainUrl}/diziler?kelime=&durum=&tur=25&type=&siralama=" to "Erotik Diziler",
-        "${mainUrl}/tur/erotik"                                    to "Erotik Filmler",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=1&type=&siralama="  to "Aile",            // ! Fazla kategori olduğu için geç yükleniyor..
-        // "${mainUrl}/diziler?kelime=&durum=&tur=2&type=&siralama="  to "Aksiyon",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=3&type=&siralama="  to "Animasyon",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=4&type=&siralama="  to "Belgesel",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=6&type=&siralama="  to "Biyografi",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=7&type=&siralama="  to "Dram",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=8&type=&siralama="  to "Fantastik",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=9&type=&siralama="  to "Gerilim",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=10&type=&siralama=" to "Gizem",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=12&type=&siralama=" to "Korku",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=13&type=&siralama=" to "Macera",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=14&type=&siralama=" to "Müzik",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=16&type=&siralama=" to "Romantik",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=17&type=&siralama=" to "Savaş",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=24&type=&siralama=" to "Yerli",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=18&type=&siralama=" to "Spor",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=19&type=&siralama=" to "Suç",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=20&type=&siralama=" to "Tarih",
-        // "${mainUrl}/diziler?kelime=&durum=&tur=21&type=&siralama=" to "Western",
+        "${mainUrl}/diziler?kelime=&durum=&tur=1&type=&siralama="  to "Aile",
+        "${mainUrl}/diziler?kelime=&durum=&tur=2&type=&siralama="  to "Aksiyon",
+        "${mainUrl}/diziler?kelime=&durum=&tur=3&type=&siralama="  to "Animasyon",
+        "${mainUrl}/diziler?kelime=&durum=&tur=4&type=&siralama="  to "Belgesel",
+        "${mainUrl}/diziler?kelime=&durum=&tur=6&type=&siralama="  to "Biyografi",
+        "${mainUrl}/diziler?kelime=&durum=&tur=7&type=&siralama="  to "Dram",
+        "${mainUrl}/diziler?kelime=&durum=&tur=8&type=&siralama="  to "Fantastik",
+        "${mainUrl}/diziler?kelime=&durum=&tur=9&type=&siralama="  to "Gerilim",
+        "${mainUrl}/diziler?kelime=&durum=&tur=10&type=&siralama=" to "Gizem",
+        "${mainUrl}/diziler?kelime=&durum=&tur=12&type=&siralama=" to "Korku",
+        "${mainUrl}/diziler?kelime=&durum=&tur=13&type=&siralama=" to "Macera",
+        "${mainUrl}/diziler?kelime=&durum=&tur=14&type=&siralama=" to "Müzik",
+        "${mainUrl}/diziler?kelime=&durum=&tur=16&type=&siralama=" to "Romantik",
+        "${mainUrl}/diziler?kelime=&durum=&tur=17&type=&siralama=" to "Savaş",
+        "${mainUrl}/diziler?kelime=&durum=&tur=24&type=&siralama=" to "Yerli",
+        "${mainUrl}/diziler?kelime=&durum=&tur=18&type=&siralama=" to "Spor",
+        "${mainUrl}/diziler?kelime=&durum=&tur=19&type=&siralama=" to "Suç",
+        "${mainUrl}/diziler?kelime=&durum=&tur=20&type=&siralama=" to "Tarih",
+        "${mainUrl}/diziler?kelime=&durum=&tur=21&type=&siralama=" to "Western",
     )
 
+    // -------------------------
+    // --- DOMAIN TESPİTİ ---
+    // -------------------------
+    // Basit heuristic: mevcut mainUrl içindeki sayıyı al, +/- RANGE aralığında dene.
+    private suspend fun ensureMainUrl() {
+        if (mainUrlResolved) return
+
+        try {
+            Log.d("DZP", "ensureMainUrl: kontrol ediliyor -> $mainUrl")
+            // İlk deneme: mevcut mainUrl'e istek at (cloudflare challenge olabilir)
+            val check = safeHeadOrGet(mainUrl)
+            if (check) {
+                Log.d("DZP", "ensureMainUrl: mevcut domain çalışıyor: $mainUrl")
+                mainUrlResolved = true
+                return
+            }
+
+            // Eğer buraya geldiyse mevcut domain çalışmamış olabilir.
+            // Domain içindeki sayıyı çıkaralım; yoksa 1217 kullan.
+            val baseRegex = Regex("""(dizipal)(\d{3,4})""")
+            val match = baseRegex.find(mainUrl)
+            var baseNumber = match?.groupValues?.get(2)?.toIntOrNull() ?: 1217
+
+            // denenecek aralık (±8)
+            val delta = 8
+            val start = max(1200, baseNumber - delta)
+            val end = baseNumber + delta
+
+            val candidates = mutableListOf<String>()
+            for (n in start..end) {
+                candidates.add("https://dizipal$n.com")
+                candidates.add("http://dizipal$n.com")
+                candidates.add("https://www.dizipal$n.com")
+            }
+
+            // dedupe while preserving order
+            val tried = mutableSetOf<String>()
+            for (candidate in candidates) {
+                if (tried.add(candidate)) {
+                    Log.d("DZP", "ensureMainUrl: deneyen -> $candidate")
+                    val ok = safeHeadOrGet(candidate)
+                    if (ok) {
+                        Log.d("DZP", "ensureMainUrl: bulunan domain -> $candidate")
+                        mainUrl = candidate.trimEnd('/') // güncelle
+                        mainUrlResolved = true
+                        return
+                    }
+                }
+            }
+
+            Log.d("DZP", "ensureMainUrl: herhangi bir candidate çalışmadı, ana domain kalacak: $mainUrl")
+        } catch (e: Exception) {
+            Log.e("DZP", "ensureMainUrl hata: ${e.message}")
+        } finally {
+            // eğer hiçbir domain çalışmadı bile, flag'i true yapma - sonraki çağrıda tekrar deneyebiliriz
+        }
+    }
+
+    // Basit yardımcı: kısa HEAD/GET denemesi. cloudflare challenge ile karşılaşırsa yine false döner.
+    private suspend fun safeHeadOrGet(url: String): Boolean {
+        return try {
+            val res = app.get(url, timeout = 7000).response
+            val code = res.code
+            val bodyString = res.body?.string() ?: ""
+            // sayfada siteye özgü küçük bir işaretçi arayalım (ör. "DiziPal" veya "dizipal")
+            val containsMarker = bodyString.contains("DiziPal", ignoreCase = true) ||
+                                 bodyString.contains("dizipal", ignoreCase = true) ||
+                                 bodyString.contains("son-bolumler", ignoreCase = true)
+            val ok = (code in 200..399) && containsMarker
+            Log.d("DZP", "safeHeadOrGet $url -> code:$code marker:$containsMarker ok:$ok")
+            ok
+        } catch (e: Exception) {
+            Log.d("DZP", "safeHeadOrGet hata $url -> ${e.message}")
+            false
+        }
+    }
+
+    // -------------------------
+    // --- API OVERRIDES ---
+    // -------------------------
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        ensureMainUrl()
+
         val document = app.get(
             request.data, timeout = 10000, interceptor = interceptor, headers = getHeaders(mainUrl)
         ).document
         Log.d("DZP", "Ana sayfa HTML içeriği:\n${document.outerHtml()}")
         val home     = if (request.data.contains("/diziler/son-bolumler")) {
-            document.select("div.episode-item").mapNotNull { it.sonBolumler() } 
+            document.select("div.episode-item").mapNotNull { it.sonBolumler() }
         } else {
             document.select("article.type2 ul li").mapNotNull { it.diziler() }
         }
@@ -136,6 +222,8 @@ class DiziPal : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
+        ensureMainUrl()
+
         val responseRaw = app.post(
             "${mainUrl}/api/search-autocomplete",
             headers     = mapOf(
@@ -162,6 +250,8 @@ class DiziPal : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
+        ensureMainUrl()
+
         val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
 
         val poster      = fixUrlNull(document.selectFirst("[property='og:image']")?.attr("content"))
@@ -193,7 +283,7 @@ class DiziPal : MainAPI() {
                 this.tags      = tags
                 this.duration  = duration
             }
-        } else { 
+        } else {
             val title = document.selectXpath("//div[@class='g-title'][2]/div").text().trim()
 
             return newMovieLoadResponse(title, url, TvType.Movie, url) {
@@ -207,6 +297,7 @@ class DiziPal : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
+        ensureMainUrl()
         Log.d("DZP", "data » $data")
         val document = app.get(data, interceptor = interceptor, headers = getHeaders(mainUrl)).document
         val iframe   = document.selectFirst(".series-player-container iframe")?.attr("src") ?: document.selectFirst("div#vast_new iframe")?.attr("src") ?: return false
@@ -248,32 +339,25 @@ class DiziPal : MainAPI() {
 
         callback.invoke(
             newExtractorLink(
-        source = this.name,
-        name = this.name,
-        url = m3uLink,
-        type = ExtractorLinkType.M3U8
-        ) {
-        headers = mapOf("Referer" to "${mainUrl}/")
-        quality = Qualities.Unknown.value
-          }
+                source = this.name,
+                name = this.name,
+                url = m3uLink,
+                type = ExtractorLinkType.M3U8
+            ) {
+                headers = mapOf("Referer" to "${mainUrl}/")
+                quality = Qualities.Unknown.value
+            }
         )
-
-
-        // M3u8Helper.generateM3u8(
-        //     source    = this.name,
-        //     name      = this.name,
-        //     streamUrl = m3uLink,
-        //     referer   = "${mainUrl}/"
-        // ).forEach(callback)
 
         return true
     }
-        companion object {
+
+    companion object {
         private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
 
         private fun getHeaders(referer: String): Map<String, String> = mapOf(
             "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "User-Agent" to USER_AGENT,
         )
-        }
+    }
 }
