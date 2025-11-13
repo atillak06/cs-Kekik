@@ -89,18 +89,23 @@ class DiziPal : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get(
-            request.data, timeout = 10000, interceptor = interceptor, headers = getHeaders(mainUrl)
-        ).document
-        Log.d("DZP", "Ana sayfa HTML içeriği:\n${document.outerHtml()}")
-        val home     = if (request.data.contains("/diziler/son-bolumler")) {
-            document.select("div.episode-item").mapNotNull { it.sonBolumler() } 
-        } else {
-            document.select("article.type2 ul li").mapNotNull { it.diziler() }
-        }
+    val pageUrl = if (page > 1) "${request.data}?s=$page" else request.data
 
-        return newHomePageResponse(request.name, home, hasNext=false)
-    }
+    val document = app.get(
+        pageUrl,
+        timeout = 10000,
+        interceptor = interceptor,
+        headers = getHeaders(mainUrl)
+    ).document
+
+    val homeItems = document.select("article.type2 ul li").mapNotNull { it.diziler() }
+
+    // İçerik sayısı 0 ise bir sonraki sayfa yok
+    val hasNext = homeItems.isNotEmpty()
+
+    return newHomePageResponse(request.name, homeItems, hasNext = hasNext)
+}
+
 
     private fun Element.sonBolumler(): SearchResponse? {
         val name      = this.selectFirst("div.name")?.text() ?: return null
