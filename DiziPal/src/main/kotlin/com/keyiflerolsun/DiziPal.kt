@@ -98,13 +98,20 @@ class DiziPal : MainAPI() {
         headers = getHeaders(mainUrl)
     ).document
 
-    val homeItems = document.select("article.type2 ul li").mapNotNull { it.diziler() }
+    val homeItems = document.select("div.flw-item").mapNotNull {
+        val title = it.selectFirst("h2.title")?.text() ?: return@mapNotNull null
+        val href = fixUrlNull(it.selectFirst("a")?.attr("href")) ?: return@mapNotNull null
+        val posterUrl = fixUrlNull(it.selectFirst("img")?.attr("data-src"))
 
-    // İçerik sayısı 0 ise bir sonraki sayfa yok
+        newMovieSearchResponse(title, href, TvType.Movie) {
+            this.posterUrl = posterUrl
+        }
+    }
+
     val hasNext = homeItems.isNotEmpty()
-
     return newHomePageResponse(request.name, homeItems, hasNext = hasNext)
 }
+
 
 
     private fun Element.sonBolumler(): SearchResponse? {
