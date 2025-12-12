@@ -7,9 +7,9 @@ from re           import findall
 from base64       import b64decode
 
 oturum  = CloudScraper()
-oturum.headers.update({"User-Agent":"Mozilla/5.0", "Referer":"https://filmmakinesi.de/"})
+oturum.headers.update({"User-Agent":"Mozilla/5.0", "Referer":"https://filmmakinesi.to/"})
 
-film_link = "https://filmmakinesi.de/film/vini-jr2025/"
+film_link = "https://filmmakinesi.to/film/vini-jr2025/"
 
 istek   = oturum.get(film_link)
 secici  = Selector(istek.text)
@@ -32,11 +32,11 @@ for track in i_selector.css("track"):
 
 # m3u_link = findall(r"""contentUrl\": \"([^\"]+)""", i_source.text)[0]
 # print(m3u_link)
-# oturum.headers.update({"Referer": "https://closeload.filmmakinesi.film/"})
+# oturum.headers.update({"Referer": "https://closeload.filmmakinesi.to/"})
 # konsol.print(oturum.get(m3u_link).text)
 
 
-# thumbnail = findall(r"""closeload\.filmmakinesi\.film\/img\/([^\"]+)\.jpg""", i_source.text)[0]
+# thumbnail = findall(r"""closeload\.filmmakinesi\.to\/img\/([^\"]+)\.jpg""", i_source.text)[0]
 # posible   = f"https://balancehls6.closeload.com/hls/{thumbnail}.mp4/master.txt"
-# oturum.headers.update({"Referer": "https://closeload.filmmakinesi.film/"})
+# oturum.headers.update({"Referer": "https://closeload.filmmakinesi.to/"})
 # konsol.print(oturum.get(posible))
