@@ -1,9 +1,9 @@
 version = 31
 
 cloudstream {
-    authors     = listOf("keyiflerolsun", "muratcesmecioglu")
+    authors     = listOf("atillagentr")
     language    = "tr"
-    description = "en yeni dizileri güvenli ve hızlı şekilde sunar."
+    description = "dizi ve filmler burada"
 
     /**
      * Status int as the following:
